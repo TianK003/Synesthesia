@@ -9,10 +9,11 @@ import dev.tiank003.synesthesia.core.audio.AudioRepository
 import dev.tiank003.synesthesia.core.pipeline.AudioPipeline
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VisualizationRegistry
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,18 +30,20 @@ class LabViewModel @Inject constructor(
     /** Mirror of [AudioRepository.mode] so the Lab screen observes audio state. */
     val audioMode: StateFlow<AudioRepository.AudioMode> = audioRepository.mode
 
+    /** Incremented on every audio frame — collected by LabScreen to drive recomposition. */
+    private val _audioTick = MutableStateFlow(0)
+    val audioTick: StateFlow<Int> = _audioTick.asStateFlow()
+
     init {
-        // Forward pipeline frames to whichever visualization is currently displayed
-        viewModelScope.launch {
-            combine(
-                pipeline.audioFrame,
-                pipeline.frequencyFrame
-            ) { audio, freq -> audio to freq }
-                .collect { (audio, freq) ->
-                    if (audio != null && freq != null) {
-                        _currentViz.value?.onAudioFrame(audio, freq)
-                    }
+        // Forward pipeline frames to whichever visualization is currently displayed.
+        // Also bump _audioTick so LabScreen can provide LocalAudioTick top-down.
+        viewModelScope.launch(Dispatchers.Default) {
+            pipeline.framesPair.collect { pair ->
+                if (pair != null) {
+                    _currentViz.value?.onAudioFrame(pair.first, pair.second)
+                    _audioTick.update { it + 1 }
                 }
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 package dev.tiank003.synesthesia.feature.lab
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +22,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,12 +30,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.tiank003.synesthesia.R
 import dev.tiank003.synesthesia.core.audio.AudioRepository
+import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
 
 /**
  * Full-screen visualization player.
@@ -53,11 +58,21 @@ fun LabScreen(
 ) {
     val currentViz by viewModel.currentViz.collectAsStateWithLifecycle()
     val audioMode by viewModel.audioMode.collectAsStateWithLifecycle()
+    val audioTick by viewModel.audioTick.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     val micPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) viewModel.startMic()
+    }
+
+    fun startMicWithPermissionCheck() {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) viewModel.startMic()
+        else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
     val filePicker = rememberLauncherForActivityResult(
@@ -69,10 +84,12 @@ fun LabScreen(
     LaunchedEffect(vizId) {
         if (vizId != null) {
             viewModel.selectVisualization(vizId)
-            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
 
+    // Provide tick top-down: when audioTick changes (every audio frame), any viz Content()
+    // that reads LocalAudioTick.current recomposes via standard Compose reactive flow.
+    CompositionLocalProvider(LocalAudioTick provides audioTick) {
     Box(modifier = Modifier.fillMaxSize()) {
 
         // ── Visualization content (edge-to-edge, under overlays) ──────────────
@@ -122,7 +139,7 @@ fun LabScreen(
         // ── Bottom overlay: audio controls ────────────────────────────────────
         AudioControls(
             mode = audioMode,
-            onStartMic = { micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+            onStartMic = { startMicWithPermissionCheck() },
             onStop = viewModel::stopAudio,
             onPickFile = { filePicker.launch(arrayOf("audio/*")) },
             modifier = Modifier
@@ -136,6 +153,7 @@ fun LabScreen(
                 .padding(horizontal = 24.dp, vertical = 20.dp)
         )
     }
+    } // end CompositionLocalProvider
 }
 
 @Composable

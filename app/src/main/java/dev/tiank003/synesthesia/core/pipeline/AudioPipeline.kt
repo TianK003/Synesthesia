@@ -45,6 +45,10 @@ class AudioPipeline @Inject constructor(
     private val _frequencyFrame = MutableStateFlow<FrequencyFrame?>(null)
     val frequencyFrame: StateFlow<FrequencyFrame?> = _frequencyFrame.asStateFlow()
 
+    /** Emits a matched (AudioFrame, FrequencyFrame) pair once per processed frame. */
+    private val _framesPair = MutableStateFlow<Pair<AudioFrame, FrequencyFrame>?>(null)
+    val framesPair: StateFlow<Pair<AudioFrame, FrequencyFrame>?> = _framesPair.asStateFlow()
+
     val isRunning: Boolean get() = pipelineJob?.isActive == true
 
     /**
@@ -68,11 +72,10 @@ class AudioPipeline @Inject constructor(
         pipelineJob = null
         _audioFrame.value = null
         _frequencyFrame.value = null
+        _framesPair.value = null
     }
 
     private fun processFrame(frame: AudioFrame) {
-        _audioFrame.value = frame
-
         // Apply window into the pre-allocated buffer
         val pcm = frame.pcm
         val len = minOf(pcm.size, fftProcessor.fftSize)
@@ -84,12 +87,15 @@ class AudioPipeline @Inject constructor(
             else FloatArray(fftSize).also { pcm.copyInto(it, 0, 0, len) }
         )
 
-        val magnitudes = fftProcessor.process(windowed)
-        _frequencyFrame.value = FrequencyFrame(
-            magnitudes = magnitudes,
+        val freqFrame = FrequencyFrame(
+            magnitudes = fftProcessor.process(windowed),
             sampleRate = frame.sampleRate,
             fftSize = fftSize
         )
+
+        _audioFrame.value = frame
+        _frequencyFrame.value = freqFrame
+        _framesPair.value = frame to freqFrame  // single emission with matched pair
     }
 
     fun release() {

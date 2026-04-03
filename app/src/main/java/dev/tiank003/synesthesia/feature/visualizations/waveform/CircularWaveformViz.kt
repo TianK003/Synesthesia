@@ -4,7 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -12,14 +11,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
+import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.PI
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -35,25 +33,22 @@ class CircularWaveformViz @Inject constructor() : SoundVisualization {
     override val description = "PCM waveform mapped around a circle, modulated by amplitude."
     override val category = VizCategory.WAVEFORM
 
-    private val _currentPcm = AtomicReference(FloatArray(0))
-    private val _renderTick = MutableStateFlow(0)
+    private val _currentPcm = AtomicReference(FloatArray(2048)) // flat circle until first frame
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         _currentPcm.set(audio.pcm)
-        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
-        @Suppress("UNUSED_VARIABLE")
-        val tick by _renderTick.collectAsState()
+        LocalAudioTick.current
         val path = remember { Path() }
         val primary = MaterialTheme.colorScheme.primary
         val primaryContainer = MaterialTheme.colorScheme.primaryContainer
 
         Canvas(modifier = modifier.fillMaxSize()) {
             val pcm = _currentPcm.get()
-            if (pcm.isEmpty()) return@Canvas
+            if (pcm.size < 2) return@Canvas
 
             val cx = size.width / 2f
             val cy = size.height / 2f

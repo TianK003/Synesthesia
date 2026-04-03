@@ -4,7 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -13,13 +12,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
+import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 
 /**
  * Terrain mesh — isometric-style height-map where elevation = frequency magnitude.
@@ -39,17 +37,14 @@ class TerrainMeshViz @Inject constructor() : SoundVisualization {
     override val category = VizCategory.ARTISTIC
 
     private val _magnitudes = AtomicReference(FloatArray(0))
-    private val _renderTick = MutableStateFlow(0)
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         _magnitudes.set(frequency.magnitudes.copyOf())
-        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
-        @Suppress("UNUSED_VARIABLE")
-        val tick by _renderTick.collectAsState()
+        LocalAudioTick.current
         val primary = MaterialTheme.colorScheme.primary
         val secondary = MaterialTheme.colorScheme.secondary
         val primaryContainer = MaterialTheme.colorScheme.primaryContainer

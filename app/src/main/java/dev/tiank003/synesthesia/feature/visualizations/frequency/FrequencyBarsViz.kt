@@ -4,7 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -13,6 +12,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
+import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
@@ -20,8 +20,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.log10
 import kotlin.math.pow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 
 /**
  * Classic equalizer frequency bars with logarithmic band spacing.
@@ -41,7 +39,6 @@ class FrequencyBarsViz @Inject constructor() : SoundVisualization {
     private val numBands = 32
     // Smoothed band energies — written on audio thread, read on render thread
     private val _bandEnergies = AtomicReference(FloatArray(numBands))
-    private val _renderTick = MutableStateFlow(0)
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         val mags = frequency.magnitudes
@@ -71,13 +68,11 @@ class FrequencyBarsViz @Inject constructor() : SoundVisualization {
             prev[i] * 0.7f + rawBands[i] * 0.3f
         }
         _bandEnergies.set(smoothed)
-        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
-        @Suppress("UNUSED_VARIABLE")
-        val tick by _renderTick.collectAsState()
+        LocalAudioTick.current
         val primary = MaterialTheme.colorScheme.primary
         val tertiary = MaterialTheme.colorScheme.tertiary
 

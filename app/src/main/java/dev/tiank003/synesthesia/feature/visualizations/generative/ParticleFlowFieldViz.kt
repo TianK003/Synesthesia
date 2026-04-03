@@ -1,16 +1,18 @@
 package dev.tiank003.synesthesia.feature.visualizations.generative
 
+import android.graphics.Paint as NativePaint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FeatureExtractors
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
+import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
@@ -18,8 +20,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.PI
 import kotlin.math.sin
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 
 /**
  * Perlin-noise flow field with 800 particles. Noise parameters (scale, speed, turbulence)
@@ -37,7 +37,7 @@ class ParticleFlowFieldViz @Inject constructor() : SoundVisualization {
     override val category = VizCategory.GENERATIVE
 
     private val numParticles = 800
-    private val _renderTick = MutableStateFlow(0)
+    private val rng = java.util.Random()
     private data class ParticleState(val x: FloatArray, val y: FloatArray, val age: FloatArray)
     private val _particles = AtomicReference(
         ParticleState(
@@ -75,13 +75,12 @@ class ParticleFlowFieldViz @Inject constructor() : SoundVisualization {
 
             // Wrap or reset particles that leave the canvas or age out
             if (nx[i] < 0f || nx[i] > 1f || ny[i] < 0f || ny[i] > 1f || nage[i] > 1f) {
-                nx[i] = java.util.Random().nextFloat()
-                ny[i] = java.util.Random().nextFloat()
+                nx[i] = rng.nextFloat()
+                ny[i] = rng.nextFloat()
                 nage[i] = 0f
             }
         }
         _particles.set(ParticleState(nx, ny, nage))
-        _renderTick.update { it + 1 }
     }
 
     /** Smooth angle field using layered sines — approximates Perlin noise cheaply. */
@@ -94,26 +93,25 @@ class ParticleFlowFieldViz @Inject constructor() : SoundVisualization {
         )
     }
 
+    // Pre-allocated flat [x0,y0, x1,y1, ...] buffer for native drawPoints — zero alloc in draw
+    private val pointCoords = FloatArray(numParticles * 2)
+
     @Composable
     override fun Content(modifier: Modifier) {
-        @Suppress("UNUSED_VARIABLE")
-        val tick by _renderTick.collectAsState()
+        LocalAudioTick.current
         val primary = MaterialTheme.colorScheme.primary
+        // Pre-allocate native Paint once; update color when theme changes
+        val nativePaint = remember { NativePaint().apply { strokeWidth = 3f } }
+        nativePaint.color = primary.copy(alpha = 0.7f).toArgb()
 
         Canvas(modifier = modifier.fillMaxSize()) {
             val state = _particles.get()
-
-            // Batch draw as a list of offsets — one drawPoints call
-            val offsets = Array(numParticles) { i ->
-                Offset(state.x[i] * size.width, state.y[i] * size.height)
+            for (i in 0 until numParticles) {
+                pointCoords[i * 2]     = state.x[i] * size.width
+                pointCoords[i * 2 + 1] = state.y[i] * size.height
             }
-
-            drawPoints(
-                points = offsets.toList(),
-                pointMode = androidx.compose.ui.graphics.PointMode.Points,
-                color = primary.copy(alpha = 0.7f),
-                strokeWidth = 3f
-            )
+            // drawPoints(FloatArray, Paint) is zero-allocation — no boxing, no List wrapper
+            drawContext.canvas.nativeCanvas.drawPoints(pointCoords, nativePaint)
         }
     }
 }

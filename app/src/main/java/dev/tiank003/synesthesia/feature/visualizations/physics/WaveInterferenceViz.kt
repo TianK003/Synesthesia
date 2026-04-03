@@ -6,8 +6,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ShaderBrush
@@ -15,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FeatureExtractors
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
+import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
@@ -24,8 +23,6 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 
 @Singleton
 class WaveInterferenceViz @Inject constructor() : SoundVisualization {
@@ -39,8 +36,6 @@ class WaveInterferenceViz @Inject constructor() : SoundVisualization {
         val rms: Float, val freq1: Float, val freq2: Float, val freq3: Float, val timeMs: Long
     )
     private val _state = AtomicReference(WaveState(0f, 440f, 660f, 880f, System.currentTimeMillis()))
-    private val _renderTick = MutableStateFlow(0)
-
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         val mags = frequency.magnitudes
         if (mags.isEmpty()) return
@@ -60,13 +55,11 @@ class WaveInterferenceViz @Inject constructor() : SoundVisualization {
             freq3 = bandFreq(2 * third, mags.size).coerceIn(20f, 2000f),
             timeMs = System.currentTimeMillis()
         ))
-        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
-        @Suppress("UNUSED_VARIABLE")
-        val tick by _renderTick.collectAsState()
+        LocalAudioTick.current
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             AgslContent(modifier)
         } else {

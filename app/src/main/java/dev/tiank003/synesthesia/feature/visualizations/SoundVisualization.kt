@@ -1,9 +1,18 @@
 package dev.tiank003.synesthesia.feature.visualizations
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
+
+/**
+ * Incremented by LabViewModel each time a new audio frame is processed.
+ * Viz [SoundVisualization.Content] composables read this value so Compose's
+ * top-down recomposition mechanism triggers a redraw on every audio frame.
+ * Defaults to 0 (no audio — e.g. in the Explore gallery).
+ */
+val LocalAudioTick = compositionLocalOf { 0 }
 
 /**
  * Contract that every visualization must implement.

@@ -4,8 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -16,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FeatureExtractors
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
+import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
@@ -26,8 +25,6 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
 
 /**
  * Recursive fractal tree whose branching angle, trunk length, and depth
@@ -47,8 +44,6 @@ class FractalTreeViz @Inject constructor() : SoundVisualization {
     private data class Branch(val x1: Float, val y1: Float, val x2: Float, val y2: Float, val depth: Int)
     private data class TreeState(val branches: List<Branch>, val maxDepth: Int)
     private val _state = AtomicReference(TreeState(emptyList(), 0))
-    private val _renderTick = MutableStateFlow(0)
-
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         val mags = frequency.magnitudes
         if (mags.isEmpty()) return
@@ -57,9 +52,13 @@ class FractalTreeViz @Inject constructor() : SoundVisualization {
         val third = mags.size / 3
 
         // Low band drives left-branch angle, high band drives right-branch angle
-        val lowEnergy = mags.slice(0 until third).average().toFloat()
-        val midEnergy = mags.slice(third until 2 * third).average().toFloat()
-        val highEnergy = mags.slice(2 * third until mags.size).average().toFloat()
+        // Manual range sum avoids slice() which boxes every float into a List<Float>
+        var lowSum = 0f; for (k in 0 until third) lowSum += mags[k]
+        var midSum = 0f; for (k in third until 2 * third) midSum += mags[k]
+        var highSum = 0f; for (k in 2 * third until mags.size) highSum += mags[k]
+        val lowEnergy = lowSum / third.coerceAtLeast(1)
+        val midEnergy = midSum / third.coerceAtLeast(1)
+        val highEnergy = highSum / (mags.size - 2 * third).coerceAtLeast(1)
 
         val maxBandVal = maxOf(lowEnergy, midEnergy, highEnergy).coerceAtLeast(1e-6f)
         val leftAngle = (PI / 4 + (lowEnergy / maxBandVal) * PI / 6).toFloat()
@@ -80,7 +79,6 @@ class FractalTreeViz @Inject constructor() : SoundVisualization {
             branchFactor = 0.67f
         )
         _state.set(TreeState(branches, maxDepth))
-        _renderTick.update { it + 1 }
     }
 
     private fun buildTree(
@@ -104,8 +102,7 @@ class FractalTreeViz @Inject constructor() : SoundVisualization {
 
     @Composable
     override fun Content(modifier: Modifier) {
-        @Suppress("UNUSED_VARIABLE")
-        val tick by _renderTick.collectAsState()
+        LocalAudioTick.current
         val primary = MaterialTheme.colorScheme.primary
         val tertiary = MaterialTheme.colorScheme.tertiary
         val surface = MaterialTheme.colorScheme.surfaceContainerLow
