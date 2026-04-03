@@ -8,7 +8,12 @@
       "Bash(curl -s \"https://repo1.maven.org/maven2/com/google/devtools/ksp/symbol-processing-api/2.3.6/symbol-processing-api-2.3.6.pom\")",
       "Bash(curl -s *)",
       "Bash(./gradlew compileDebugKotlin)",
-      "Bash(./gradlew *)"
+      "Bash(./gradlew *)",
+      "Bash(identify /c/Users/admin/AndroidStudioProjects/Synesthesia/icon.png)",
+      "Bash(python3 -c \"from PIL import Image; print\\('PIL available'\\)\")",
+      "Bash(python -c \"from PIL import Image; print\\('PIL available'\\)\")",
+      "Bash(pip install:*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }
