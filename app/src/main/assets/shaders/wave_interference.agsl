@@ -1,0 +1,40 @@
+// Multi-source wave interference shader
+// Three point sources emit circular waves; their superposition creates interference patterns.
+
+uniform float uTime;
+uniform float2 uResolution;
+uniform float uAmplitude;     // RMS energy (0..1)
+uniform float uFrequency1;    // Hz for source 1
+uniform float uFrequency2;    // Hz for source 2
+uniform float uFrequency3;    // Hz for source 3
+uniform float4 uColorPrimary;
+uniform float4 uColorSurface;
+
+half4 main(float2 fragCoord) {
+    float2 uv = fragCoord / uResolution;
+    float aspect = uResolution.x / uResolution.y;
+    float2 p = float2(uv.x * aspect, uv.y);
+
+    // Three fixed source positions (in aspect-corrected space)
+    float2 s1 = float2(0.25 * aspect, 0.3);
+    float2 s2 = float2(0.75 * aspect, 0.3);
+    float2 s3 = float2(0.50 * aspect, 0.75);
+
+    float k1 = uFrequency1 * 0.003;
+    float k2 = uFrequency2 * 0.003;
+    float k3 = uFrequency3 * 0.003;
+
+    float r1 = length(p - s1);
+    float r2 = length(p - s2);
+    float r3 = length(p - s3);
+
+    float wave = sin(k1 * r1 * 60.0 - uTime * 3.0)
+               + sin(k2 * r2 * 60.0 - uTime * 2.5)
+               + sin(k3 * r3 * 60.0 - uTime * 3.5);
+
+    float normalized = wave / 3.0 * 0.5 + 0.5;  // 0..1
+    normalized = clamp(normalized * (0.5 + uAmplitude), 0.0, 1.0);
+
+    float4 color = mix(uColorSurface, uColorPrimary, normalized);
+    return half4(color.rgb, 1.0);
+}

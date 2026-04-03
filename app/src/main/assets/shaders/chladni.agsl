@@ -1,0 +1,36 @@
+// Chladni nodal pattern shader
+// Simulates sand grains collecting at nodal lines of a vibrating plate.
+// Nodal lines are where: sin(m*π*x)*sin(n*π*y) - sin(n*π*x)*sin(m*π*y) ≈ 0
+
+uniform float uFrequency;   // dominant frequency in Hz (20..20000)
+uniform float uTime;         // elapsed time in seconds
+uniform float2 uResolution;  // canvas size in pixels
+
+// Primary and background colors (passed as uniforms for theme integration)
+uniform float4 uColorPrimary;
+uniform float4 uColorSurface;
+
+half4 main(float2 fragCoord) {
+    // Normalize to 0..1
+    float2 uv = fragCoord / uResolution;
+
+    // Map frequency to m,n mode numbers (1..8 range)
+    float freqNorm = clamp(uFrequency / 4000.0, 0.0, 1.0);
+    float m = 1.0 + floor(freqNorm * 6.0);
+    float n = 2.0 + floor((1.0 - freqNorm) * 5.0);
+
+    // Slow temporal drift of the mode numbers
+    m = m + sin(uTime * 0.3) * 0.3;
+    n = n + cos(uTime * 0.2) * 0.3;
+
+    float PI = 3.14159265;
+    float z = sin(m * PI * uv.x) * sin(n * PI * uv.y)
+            - sin(n * PI * uv.x) * sin(m * PI * uv.y);
+
+    // Nodal lines are where |z| is small
+    float nodal = 1.0 - smoothstep(0.0, 0.06, abs(z));
+
+    // Blend: nodal lines = primary color, background = surface color
+    float4 color = mix(uColorSurface, uColorPrimary, nodal);
+    return half4(color.rgb, 1.0);
+}

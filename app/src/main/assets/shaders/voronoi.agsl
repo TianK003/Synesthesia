@@ -1,0 +1,58 @@
+// Voronoi tessellation shader
+// Seed points drift based on audio energy; cells colored by frequency band.
+
+uniform float uTime;
+uniform float2 uResolution;
+uniform float uAmplitude;     // RMS 0..1
+uniform float uCentroid;      // spectral centroid normalized 0..1
+uniform float4 uColorPrimary;
+uniform float4 uColorSecondary;
+uniform float4 uColorTertiary;
+
+// Smooth random hash
+float2 hash2(float2 p) {
+    p = float2(dot(p, float2(127.1, 311.7)), dot(p, float2(269.5, 183.3)));
+    return fract(sin(p) * 43758.5453);
+}
+
+half4 main(float2 fragCoord) {
+    float2 uv = fragCoord / uResolution;
+
+    int numSeeds = 12;
+    float minDist = 1e9;
+    float secondDist = 1e9;
+    int closestSeed = 0;
+
+    for (int i = 0; i < 12; i++) {
+        float2 seed = hash2(float2(float(i) * 1.73, float(i) * 2.39));
+        // Animate seeds with audio-driven drift
+        float speed = (0.03 + uAmplitude * 0.1) * (float(i % 3) + 1.0) * 0.3;
+        float2 offset = float2(
+            sin(uTime * speed + seed.x * 6.28) * 0.15 * (0.5 + uCentroid),
+            cos(uTime * speed * 0.7 + seed.y * 6.28) * 0.15 * (0.5 + uCentroid)
+        );
+        float2 pos = seed + offset;
+        float d = length(uv - pos);
+        if (d < minDist) {
+            secondDist = minDist;
+            minDist = d;
+            closestSeed = i;
+        } else if (d < secondDist) {
+            secondDist = d;
+        }
+    }
+
+    // Edge detection: thin bright lines at cell boundaries
+    float edge = 1.0 - smoothstep(0.0, 0.015, secondDist - minDist);
+
+    // Color by seed index modulo 3
+    float4 cellColor;
+    int mod3 = closestSeed - (closestSeed / 3) * 3;
+    if (mod3 == 0) cellColor = uColorPrimary;
+    else if (mod3 == 1) cellColor = uColorSecondary;
+    else cellColor = uColorTertiary;
+
+    float brightness = 0.3 + uAmplitude * 0.5;
+    float4 color = mix(cellColor * brightness, float4(1.0, 1.0, 1.0, 1.0), edge * 0.8);
+    return half4(color.rgb, 1.0);
+}

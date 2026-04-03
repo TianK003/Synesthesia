@@ -1,0 +1,43 @@
+// Kaleidoscope shader
+// Mirrors a procedural animated texture through N symmetry planes.
+
+uniform float uTime;
+uniform float2 uResolution;
+uniform float uAmplitude;    // RMS 0..1 — controls distortion amount
+uniform float uCentroid;     // spectral centroid 0..1 — controls color hue shift
+uniform float4 uColorPrimary;
+uniform float4 uColorSecondary;
+
+half4 main(float2 fragCoord) {
+    float2 uv = (fragCoord - uResolution * 0.5) / min(uResolution.x, uResolution.y);
+
+    // Convert to polar
+    float r = length(uv);
+    float a = atan(uv.y, uv.x);
+
+    int segments = 8;
+    float segAngle = 3.14159265 / float(segments);
+
+    // Fold angle into one segment
+    a = abs(mod(a, 2.0 * segAngle) - segAngle);
+
+    // Back to cartesian with audio distortion
+    float distort = 0.1 + uAmplitude * 0.3;
+    float2 p = float2(
+        cos(a) * r + sin(uTime * 0.8 + r * 5.0) * distort,
+        sin(a) * r + cos(uTime * 0.6 + r * 4.0) * distort
+    );
+
+    // Procedural color pattern
+    float pattern = sin(p.x * 8.0 + uTime) * cos(p.y * 8.0 - uTime * 0.7)
+                  + sin((p.x + p.y) * 6.0 + uTime * 1.2) * 0.5;
+    float t = pattern * 0.5 + 0.5;
+
+    // Hue shift driven by spectral centroid
+    float hueShift = uCentroid;
+    float4 color = mix(uColorPrimary, uColorSecondary, clamp(t + hueShift * 0.5, 0.0, 1.0));
+
+    // Vignette
+    float vignette = 1.0 - smoothstep(0.4, 0.9, r);
+    return half4(color.rgb * vignette, 1.0);
+}
