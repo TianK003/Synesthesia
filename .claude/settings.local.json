@@ -6,7 +6,9 @@
       "Bash(curl -s \"https://repo1.maven.org/maven2/com/google/devtools/ksp/com.google.devtools.ksp.gradle.plugin/maven-metadata.xml\")",
       "Bash(curl -s \"https://repo1.maven.org/maven2/com/google/devtools/ksp/com.google.devtools.ksp.gradle.plugin/2.3.6/com.google.devtools.ksp.gradle.plugin-2.3.6.pom\")",
       "Bash(curl -s \"https://repo1.maven.org/maven2/com/google/devtools/ksp/symbol-processing-api/2.3.6/symbol-processing-api-2.3.6.pom\")",
-      "Bash(curl -s *)"
+      "Bash(curl -s *)",
+      "Bash(./gradlew compileDebugKotlin)",
+      "Bash(./gradlew *)"
     ]
   }
 }
