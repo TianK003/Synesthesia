@@ -96,12 +96,15 @@ fun NavGraph() {
                     }
                 )
             }
-            composable<Lab> { LabScreen() }
+            composable<Lab> { LabScreen(onBack = null) }
             composable<Learn> { LearnScreen() }
             composable<Input> { InputScreen() }
             composable<Player> { backStackEntry ->
                 val player: Player = backStackEntry.toRoute()
-                LabScreen(vizId = player.vizId)
+                LabScreen(
+                    vizId = player.vizId,
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }
