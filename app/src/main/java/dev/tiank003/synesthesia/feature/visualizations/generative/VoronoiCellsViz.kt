@@ -6,6 +6,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -20,6 +22,8 @@ import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.sqrt
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 @Singleton
 class VoronoiCellsViz @Inject constructor() : SoundVisualization {
@@ -31,6 +35,7 @@ class VoronoiCellsViz @Inject constructor() : SoundVisualization {
 
     private data class VoronoiState(val rms: Float, val centroid: Float, val timeMs: Long)
     private val _state = AtomicReference(VoronoiState(0f, 0.5f, System.currentTimeMillis()))
+    private val _renderTick = MutableStateFlow(0)
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         val rms = FeatureExtractors.rms(audio.pcm)
@@ -39,10 +44,13 @@ class VoronoiCellsViz @Inject constructor() : SoundVisualization {
         )
         val nyquist = frequency.sampleRate / 2f
         _state.set(VoronoiState(rms.coerceIn(0f, 1f), (centroid / nyquist).coerceIn(0f, 1f), System.currentTimeMillis()))
+        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
+        @Suppress("UNUSED_VARIABLE")
+        val tick by _renderTick.collectAsState()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             AgslContent(modifier)
         } else {

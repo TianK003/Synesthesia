@@ -1,6 +1,7 @@
 package dev.tiank003.synesthesia.feature.lab
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,6 +51,8 @@ class LabViewModel @Inject constructor(
     /** Start microphone capture. Call only after RECORD_AUDIO permission is granted. */
     @SuppressLint("MissingPermission")
     fun startMic() = audioRepository.startMic()
+
+    fun startFile(uri: Uri) = audioRepository.startFile(uri)
 
     fun stopAudio() = audioRepository.stop()
 

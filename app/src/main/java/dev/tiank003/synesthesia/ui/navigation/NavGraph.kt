@@ -25,7 +25,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import dev.tiank003.synesthesia.R
 import dev.tiank003.synesthesia.feature.explore.ExploreScreen
-import dev.tiank003.synesthesia.feature.input.InputScreen
 import dev.tiank003.synesthesia.feature.lab.LabScreen
 import dev.tiank003.synesthesia.feature.learn.LearnScreen
 import dev.tiank003.synesthesia.ui.theme.StitchTokens
@@ -52,7 +51,6 @@ private val navItems = listOf(
     NavItem("Explore", R.drawable.ic_nav_explore, R.drawable.ic_nav_explore_filled, Explore),
     NavItem("Lab",     R.drawable.ic_nav_lab,     R.drawable.ic_nav_lab_filled,     Lab),
     NavItem("Learn",   R.drawable.ic_nav_learn,   R.drawable.ic_nav_learn_filled,   Learn),
-    NavItem("Input",   R.drawable.ic_nav_input,   R.drawable.ic_nav_input_filled,   Input),
 )
 
 // ── Root NavGraph ─────────────────────────────────────────────────────────────
@@ -87,20 +85,30 @@ fun NavGraph() {
         NavHost(
             navController = navController,
             startDestination = Explore,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.fillMaxSize()
         ) {
             composable<Explore> {
-                ExploreScreen(
-                    onOpenVisualization = { vizId ->
-                        navController.navigate(Player(vizId))
-                    }
-                )
+                Box(Modifier.padding(innerPadding).fillMaxSize()) {
+                    ExploreScreen(
+                        onOpenVisualization = { vizId ->
+                            navController.navigate(Player(vizId))
+                        }
+                    )
+                }
             }
-            composable<Lab> { LabScreen(onBack = null) }
-            composable<Learn> { LearnScreen() }
-            composable<Input> { InputScreen() }
+            composable<Lab> {
+                Box(Modifier.padding(innerPadding).fillMaxSize()) {
+                    LabScreen(onBack = null)
+                }
+            }
+            composable<Learn> {
+                Box(Modifier.padding(innerPadding).fillMaxSize()) {
+                    LearnScreen()
+                }
+            }
             composable<Player> { backStackEntry ->
                 val player: Player = backStackEntry.toRoute()
+                // No padding — true edge-to-edge full-screen visualization
                 LabScreen(
                     vizId = player.vizId,
                     onBack = { navController.popBackStack() }
@@ -116,7 +124,7 @@ private fun SynesthesiaBottomNav(
     onNavigate: (Any) -> Unit
 ) {
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 0.dp
     ) {
         navItems.forEach { item ->
@@ -124,7 +132,6 @@ private fun SynesthesiaBottomNav(
                 is Explore -> currentDest?.hasRoute(Explore::class) == true
                 is Lab     -> currentDest?.hasRoute(Lab::class) == true
                 is Learn   -> currentDest?.hasRoute(Learn::class) == true
-                is Input   -> currentDest?.hasRoute(Input::class) == true
                 else       -> false
             }
             NavigationBarItem(

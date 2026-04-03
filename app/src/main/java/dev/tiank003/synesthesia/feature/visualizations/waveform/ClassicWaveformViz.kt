@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -16,6 +18,8 @@ import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Classic scrolling oscilloscope — draws the raw PCM waveform as a polyline.
@@ -33,13 +37,17 @@ class ClassicWaveformViz @Inject constructor() : SoundVisualization {
     override val category = VizCategory.WAVEFORM
 
     private val _currentPcm = AtomicReference(FloatArray(0))
+    private val _renderTick = MutableStateFlow(0)
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         _currentPcm.set(audio.pcm)
+        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
+        @Suppress("UNUSED_VARIABLE")
+        val tick by _renderTick.collectAsState()
         // Pre-allocate Path outside DrawScope — never allocate inside the draw lambda
         val path = remember { Path() }
         val color = MaterialTheme.colorScheme.primary
@@ -51,18 +59,22 @@ class ClassicWaveformViz @Inject constructor() : SoundVisualization {
             val cx = size.width / 2f
             val cy = size.height / 2f
             val xStep = size.width / pcm.size.toFloat()
-            val yScale = cy * 0.8f  // leave 10% margin top & bottom
+            val yRange = cy * 0.9f  // 90% of half-height
+
+            // Auto-gain: normalize to peak so even quiet input fills the canvas
+            val peak = pcm.maxOf { kotlin.math.abs(it) }
+            val yScale = if (peak > 0.005f) yRange / peak else yRange * 20f
 
             path.reset()
-            path.moveTo(0f, cy - pcm[0] * yScale)
+            path.moveTo(0f, cy - (pcm[0] * yScale).coerceIn(-yRange, yRange))
             for (i in 1 until pcm.size) {
-                path.lineTo(i * xStep, cy - pcm[i] * yScale)
+                path.lineTo(i * xStep, cy - (pcm[i] * yScale).coerceIn(-yRange, yRange))
             }
 
             drawPath(
                 path = path,
                 color = color,
-                style = Stroke(width = 2f)
+                style = Stroke(width = 2.5f)
             )
         }
     }

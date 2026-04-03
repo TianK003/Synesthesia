@@ -1,6 +1,7 @@
 package dev.tiank003.synesthesia.feature.lab
 
 import android.Manifest
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
@@ -38,11 +39,11 @@ import dev.tiank003.synesthesia.core.audio.AudioRepository
  * Full-screen visualization player.
  *
  * When [vizId] is non-null (navigated from the Explore carousel) the visualization
- * is selected immediately. When null (Lab tab) it shows the last selected viz or
- * an empty state.
+ * is selected immediately and microphone capture starts automatically.
+ * When null (Lab tab) it shows the last selected viz or an empty state.
  *
  * Audio controls are rendered as a translucent bottom overlay so the viz fills the
- * entire screen edge-to-edge.
+ * entire screen edge-to-edge. Both mic and file input are available from the overlay.
  */
 @Composable
 fun LabScreen(
@@ -50,10 +51,6 @@ fun LabScreen(
     onBack: (() -> Unit)? = null,
     viewModel: LabViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(vizId) {
-        if (vizId != null) viewModel.selectVisualization(vizId)
-    }
-
     val currentViz by viewModel.currentViz.collectAsStateWithLifecycle()
     val audioMode by viewModel.audioMode.collectAsStateWithLifecycle()
 
@@ -61,6 +58,19 @@ fun LabScreen(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) viewModel.startMic()
+    }
+
+    val filePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) viewModel.startFile(uri)
+    }
+
+    LaunchedEffect(vizId) {
+        if (vizId != null) {
+            viewModel.selectVisualization(vizId)
+            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -84,7 +94,7 @@ fun LabScreen(
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent)
+                        listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent)
                     )
                 )
                 .padding(horizontal = 8.dp, vertical = 12.dp),
@@ -93,7 +103,7 @@ fun LabScreen(
             if (onBack != null) {
                 IconButton(onClick = onBack) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_nav_explore),
+                        painter = painterResource(R.drawable.ic_back),
                         contentDescription = "Back",
                         tint = Color.White
                     )
@@ -114,12 +124,13 @@ fun LabScreen(
             mode = audioMode,
             onStartMic = { micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
             onStop = viewModel::stopAudio,
+            onPickFile = { filePicker.launch(arrayOf("audio/*")) },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.5f))
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f))
                     )
                 )
                 .padding(horizontal = 24.dp, vertical = 20.dp)
@@ -132,6 +143,7 @@ private fun AudioControls(
     mode: AudioRepository.AudioMode,
     onStartMic: () -> Unit,
     onStop: () -> Unit,
+    onPickFile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -141,13 +153,8 @@ private fun AudioControls(
     ) {
         when (mode) {
             AudioRepository.AudioMode.Idle -> {
-                // Mic start button
                 MicButton(active = false, onClick = onStartMic)
-                Text(
-                    text = "Tap mic to start",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.75f)
-                )
+                FileButton(onClick = onPickFile)
             }
             AudioRepository.AudioMode.Mic -> {
                 MicButton(active = true, onClick = onStop)
@@ -177,7 +184,7 @@ private fun MicButton(active: Boolean, onClick: () -> Unit) {
             .size(56.dp)
             .background(
                 color = if (active) MaterialTheme.colorScheme.primary
-                else Color.White.copy(alpha = 0.2f),
+                else Color.Black.copy(alpha = 0.55f),
                 shape = CircleShape
             )
     ) {
@@ -186,6 +193,26 @@ private fun MicButton(active: Boolean, onClick: () -> Unit) {
                 if (active) R.drawable.ic_nav_input_filled else R.drawable.ic_nav_input
             ),
             contentDescription = if (active) "Stop" else "Start microphone",
+            tint = Color.White,
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
+
+@Composable
+private fun FileButton(onClick: () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(56.dp)
+            .background(
+                color = Color.Black.copy(alpha = 0.55f),
+                shape = CircleShape
+            )
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_nav_explore),
+            contentDescription = "Pick audio file",
             tint = Color.White,
             modifier = Modifier.size(24.dp)
         )

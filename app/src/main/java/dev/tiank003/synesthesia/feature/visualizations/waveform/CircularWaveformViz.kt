@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Path
@@ -16,6 +18,8 @@ import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.PI
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -32,13 +36,17 @@ class CircularWaveformViz @Inject constructor() : SoundVisualization {
     override val category = VizCategory.WAVEFORM
 
     private val _currentPcm = AtomicReference(FloatArray(0))
+    private val _renderTick = MutableStateFlow(0)
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         _currentPcm.set(audio.pcm)
+        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
+        @Suppress("UNUSED_VARIABLE")
+        val tick by _renderTick.collectAsState()
         val path = remember { Path() }
         val primary = MaterialTheme.colorScheme.primary
         val primaryContainer = MaterialTheme.colorScheme.primaryContainer

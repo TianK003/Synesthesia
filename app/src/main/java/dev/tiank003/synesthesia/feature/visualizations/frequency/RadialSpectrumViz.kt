@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -18,6 +20,8 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Frequency bars arranged radially around the center — like a circular equalizer.
@@ -33,6 +37,7 @@ class RadialSpectrumViz @Inject constructor() : SoundVisualization {
 
     private val numBands = 64
     private val _bandEnergies = AtomicReference(FloatArray(numBands))
+    private val _renderTick = MutableStateFlow(0)
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         val mags = frequency.magnitudes
@@ -56,10 +61,13 @@ class RadialSpectrumViz @Inject constructor() : SoundVisualization {
 
         val prev = _bandEnergies.get()
         _bandEnergies.set(FloatArray(numBands) { i -> prev[i] * 0.75f + rawBands[i] * 0.25f })
+        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
+        @Suppress("UNUSED_VARIABLE")
+        val tick by _renderTick.collectAsState()
         val primary = MaterialTheme.colorScheme.primary
         val tertiary = MaterialTheme.colorScheme.tertiary
 

@@ -6,9 +6,13 @@ import android.graphics.Paint as AndroidPaint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
@@ -19,6 +23,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.concurrent.withLock
 import kotlin.math.log10
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Scrolling spectrogram — a heat-map of frequency content over time.
@@ -49,6 +55,7 @@ class SpectrogramViz @Inject constructor() : SoundVisualization {
     private val paint = AndroidPaint()
     private val lock = ReentrantLock()
     private val writeCol = AtomicInteger(0)
+    private val _renderTick = MutableStateFlow(0)
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         val mags = frequency.magnitudes
@@ -74,16 +81,50 @@ class SpectrogramViz @Inject constructor() : SoundVisualization {
             }
         }
 
-        writeCol.set((col + 1) % COLUMNS)
+        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
-        // Snapshot the bitmap state for this frame — safe because we hold the lock briefly
+        @Suppress("UNUSED_VARIABLE")
+        val tick by _renderTick.collectAsState()
         Canvas(modifier = modifier.fillMaxSize()) {
+            val col = writeCol.get()
+            val w = size.width.toInt()
+            val h = size.height.toInt()
+
+            // Render ring buffer as a scrolling spectrogram: oldest columns on the left,
+            // newest on the right. Split the bitmap at the current write position.
+            // Left slice: columns [col..COLUMNS-1] → drawn in the left portion of screen
+            // Right slice: columns [0..col-1]      → drawn in the right portion of screen
             lock.withLock {
                 val snapshot = bitmap.copy(Bitmap.Config.ARGB_8888, false)
-                drawImage(snapshot.asImageBitmap())
+                val img = snapshot.asImageBitmap()
+
+                val leftCols = COLUMNS - col          // width of older-data slice
+                val rightCols = col                   // width of newer-data slice
+
+                val leftScreenW = (leftCols.toFloat() / COLUMNS * w).toInt()
+                val rightScreenW = w - leftScreenW
+
+                if (leftCols > 0) {
+                    drawImage(
+                        image = img,
+                        srcOffset = IntOffset(col, 0),
+                        srcSize = IntSize(leftCols, ROWS),
+                        dstOffset = IntOffset(0, 0),
+                        dstSize = IntSize(leftScreenW, h)
+                    )
+                }
+                if (rightCols > 0) {
+                    drawImage(
+                        image = img,
+                        srcOffset = IntOffset(0, 0),
+                        srcSize = IntSize(rightCols, ROWS),
+                        dstOffset = IntOffset(leftScreenW, 0),
+                        dstSize = IntSize(rightScreenW, h)
+                    )
+                }
             }
         }
     }

@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import dev.tiank003.synesthesia.core.audio.AudioFrame
@@ -16,6 +18,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.PI
 import kotlin.math.sin
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Perlin-noise flow field with 800 particles. Noise parameters (scale, speed, turbulence)
@@ -33,6 +37,7 @@ class ParticleFlowFieldViz @Inject constructor() : SoundVisualization {
     override val category = VizCategory.GENERATIVE
 
     private val numParticles = 800
+    private val _renderTick = MutableStateFlow(0)
     private data class ParticleState(val x: FloatArray, val y: FloatArray, val age: FloatArray)
     private val _particles = AtomicReference(
         ParticleState(
@@ -76,6 +81,7 @@ class ParticleFlowFieldViz @Inject constructor() : SoundVisualization {
             }
         }
         _particles.set(ParticleState(nx, ny, nage))
+        _renderTick.update { it + 1 }
     }
 
     /** Smooth angle field using layered sines — approximates Perlin noise cheaply. */
@@ -90,6 +96,8 @@ class ParticleFlowFieldViz @Inject constructor() : SoundVisualization {
 
     @Composable
     override fun Content(modifier: Modifier) {
+        @Suppress("UNUSED_VARIABLE")
+        val tick by _renderTick.collectAsState()
         val primary = MaterialTheme.colorScheme.primary
 
         Canvas(modifier = modifier.fillMaxSize()) {

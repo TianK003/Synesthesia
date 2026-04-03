@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.PI
 import kotlin.math.sin
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Lissajous curves — parametric curves x = A·sin(a·t + δ), y = B·sin(b·t).
@@ -41,6 +44,7 @@ class LissajousCurvesViz @Inject constructor() : SoundVisualization {
     private data class LissajousState(val a: Float, val b: Float, val delta: Float)
 
     private val _state = AtomicReference(LissajousState(1f, 2f, 0f))
+    private val _renderTick = MutableStateFlow(0)
     private var phaseAccumulator = 0f
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
@@ -64,10 +68,13 @@ class LissajousCurvesViz @Inject constructor() : SoundVisualization {
 
         phaseAccumulator += rms * 0.05f
         _state.set(LissajousState(a, b, phaseAccumulator))
+        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
+        @Suppress("UNUSED_VARIABLE")
+        val tick by _renderTick.collectAsState()
         val path = remember { Path() }
         val primary = MaterialTheme.colorScheme.primary
         val secondary = MaterialTheme.colorScheme.secondary

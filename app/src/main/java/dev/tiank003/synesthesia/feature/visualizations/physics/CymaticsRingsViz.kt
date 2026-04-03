@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.Stroke
 import dev.tiank003.synesthesia.core.audio.AudioFrame
@@ -16,6 +18,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.PI
 import kotlin.math.sin
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Concentric standing-wave rings. Each ring's radius and thickness respond to
@@ -38,6 +42,7 @@ class CymaticsRingsViz @Inject constructor() : SoundVisualization {
     private val _state = AtomicReference(
         RingState(FloatArray(numRings), 0f, System.currentTimeMillis())
     )
+    private val _renderTick = MutableStateFlow(0)
 
     override fun onAudioFrame(audio: AudioFrame, frequency: FrequencyFrame) {
         val mags = frequency.magnitudes
@@ -58,10 +63,13 @@ class CymaticsRingsViz @Inject constructor() : SoundVisualization {
             prev.bandEnergies[i] * 0.8f + bands[i] * 0.2f
         }
         _state.set(RingState(smoothed, rms, System.currentTimeMillis()))
+        _renderTick.update { it + 1 }
     }
 
     @Composable
     override fun Content(modifier: Modifier) {
+        @Suppress("UNUSED_VARIABLE")
+        val tick by _renderTick.collectAsState()
         val primary = MaterialTheme.colorScheme.primary
         val secondary = MaterialTheme.colorScheme.secondary
         val tertiary = MaterialTheme.colorScheme.tertiary
