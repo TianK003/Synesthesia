@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.tiank003.synesthesia.R
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
+import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import dev.tiank003.synesthesia.ui.theme.StitchTokens
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,8 +109,20 @@ private fun VizPager(
         ) { page ->
             val viz = visualizations[page]
             Box(modifier = Modifier.fillMaxSize()) {
-                // Visualization fills the entire page
-                viz.Content(modifier = Modifier.fillMaxSize())
+                // Static category-colored background (live viz previews cause crashes
+                // and excessive resource use from multiple ContinuousCanvas instances)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    vizCategoryColor(viz.category).copy(alpha = 0.3f),
+                                    Color.Black
+                                )
+                            )
+                        )
+                )
 
                 // Gradient info overlay at the bottom
                 Box(
@@ -190,4 +203,12 @@ private fun VizPager(
             }
         }
     }
+}
+
+private fun vizCategoryColor(category: VizCategory): Color = when (category) {
+    VizCategory.WAVEFORM -> Color(0xFF4FC3F7)
+    VizCategory.FREQUENCY -> Color(0xFFAB47BC)
+    VizCategory.PHYSICS -> Color(0xFF66BB6A)
+    VizCategory.GENERATIVE -> Color(0xFFFF7043)
+    VizCategory.ARTISTIC -> Color(0xFFFFCA28)
 }

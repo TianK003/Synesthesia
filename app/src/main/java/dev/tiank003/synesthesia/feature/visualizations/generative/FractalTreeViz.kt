@@ -88,7 +88,7 @@ class FractalTreeViz @Inject constructor() : SoundVisualization {
         leftAngle: Float, rightAngle: Float,
         branchFactor: Float
     ) {
-        if (depth >= maxDepth || length < 0.005f) return
+        if (depth >= maxDepth || length < 0.005f || branches.size >= 600) return
 
         val x2 = x + cos(angle) * length
         val y2 = y + sin(angle) * length

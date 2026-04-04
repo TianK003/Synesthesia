@@ -21,6 +21,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.concurrent.withLock
 import kotlin.math.log10
+import kotlin.math.pow
 
 /**
  * Scrolling spectrogram — a heat-map of frequency content over time.
@@ -64,11 +65,16 @@ class SpectrogramViz @Inject constructor() : SoundVisualization {
         if (mags.isEmpty()) return
 
         val col = writeCol.getAndUpdate { (it + 1) % COLUMNS }
-        val rowStep = mags.size.toFloat() / ROWS
+        val minFreq = 20f
+        val maxFreq = (frequency.sampleRate / 2f).coerceAtMost(20000f)
+        val nyquistBin = mags.size
 
         lock.withLock {
             for (row in 0 until ROWS) {
-                val binIndex = ((ROWS - 1 - row) * rowStep).toInt().coerceIn(0, mags.size - 1)
+                // Logarithmic frequency mapping: gives more rows to low/mid frequencies
+                val t = (ROWS - 1 - row).toFloat() / (ROWS - 1).coerceAtLeast(1)
+                val freq = minFreq * (maxFreq / minFreq).pow(t)
+                val binIndex = ((freq / maxFreq) * nyquistBin).toInt().coerceIn(0, mags.size - 1)
                 val mag = mags[binIndex].coerceAtLeast(1e-10f)
                 val db = (20f * log10(mag)).coerceIn(DB_MIN, DB_MAX)
                 val normalized = (db - DB_MIN) / (DB_MAX - DB_MIN)   // 0..1

@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,7 +44,7 @@ import dev.tiank003.synesthesia.core.audio.AudioRepository
  * Full-screen visualization player.
  *
  * When [vizId] is non-null (navigated from the Explore carousel) the visualization
- * is selected immediately and microphone capture starts automatically.
+ * is selected immediately. The user must press the mic button to start recording.
  * When null (Lab tab) it shows the last selected viz or an empty state.
  *
  * Audio controls are rendered as a translucent bottom overlay so the viz fills the
@@ -56,6 +58,8 @@ fun LabScreen(
 ) {
     val currentViz by viewModel.currentViz.collectAsStateWithLifecycle()
     val audioMode by viewModel.audioMode.collectAsStateWithLifecycle()
+    val showScrubBar by viewModel.showScrubBar.collectAsStateWithLifecycle()
+    val scrubFraction by viewModel.scrubFraction.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val micPermissionLauncher = rememberLauncherForActivityResult(
@@ -81,11 +85,6 @@ fun LabScreen(
     LaunchedEffect(vizId) {
         if (vizId != null) {
             viewModel.selectVisualization(vizId)
-            // Auto-start mic if permission is already granted
-            val granted = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
-            if (granted) viewModel.startMic()
         }
     }
 
@@ -135,12 +134,8 @@ fun LabScreen(
             }
         }
 
-        // ── Bottom overlay: audio controls ────────────────────────────────────
-        AudioControls(
-            mode = audioMode,
-            onStartMic = { startMicWithPermissionCheck() },
-            onStop = viewModel::stopAudio,
-            onPickFile = { filePicker.launch(arrayOf("audio/*")) },
+        // ── Bottom overlay: scrub bar + audio controls ───────────────────────
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
@@ -150,7 +145,24 @@ fun LabScreen(
                     )
                 )
                 .padding(horizontal = 24.dp, vertical = 20.dp)
-        )
+        ) {
+            if (showScrubBar) {
+                ScrubBar(
+                    fraction = scrubFraction,
+                    durationSec = viewModel.recordedDurationSec(),
+                    onScrub = viewModel::onScrub,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            AudioControls(
+                mode = audioMode,
+                onStartMic = { startMicWithPermissionCheck() },
+                onStop = viewModel::stopAudio,
+                onPickFile = { filePicker.launch(arrayOf("audio/*")) },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
@@ -233,6 +245,51 @@ private fun FileButton(onClick: () -> Unit) {
             modifier = Modifier.size(24.dp)
         )
     }
+}
+
+@Composable
+private fun ScrubBar(
+    fraction: Float,
+    durationSec: Float,
+    onScrub: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(bottom = 8.dp)) {
+        Slider(
+            value = fraction,
+            onValueChange = onScrub,
+            modifier = Modifier.fillMaxWidth(),
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+            )
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val windowSec = 15f
+            val windowStart = ((fraction * durationSec) - windowSec).coerceAtLeast(0f)
+            Text(
+                text = formatDuration(windowStart),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.6f)
+            )
+            Text(
+                text = formatDuration(durationSec),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.6f)
+            )
+        }
+    }
+}
+
+private fun formatDuration(seconds: Float): String {
+    val totalSec = seconds.toInt()
+    val min = totalSec / 60
+    val sec = totalSec % 60
+    return "%d:%02d".format(min, sec)
 }
 
 @Composable
