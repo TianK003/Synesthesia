@@ -2,7 +2,6 @@ package dev.tiank003.synesthesia.feature.visualizations.physics
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -13,7 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FeatureExtractors
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
-import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
+import dev.tiank003.synesthesia.feature.visualizations.ContinuousCanvas
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
@@ -42,7 +41,6 @@ class ChladniPatternViz @Inject constructor() : SoundVisualization {
 
     @Composable
     override fun Content(modifier: Modifier) {
-        LocalAudioTick.current
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             AgslContent(modifier)
         } else {
@@ -62,7 +60,7 @@ class ChladniPatternViz @Inject constructor() : SoundVisualization {
         }
         val shader = remember { android.graphics.RuntimeShader(shaderSrc) }
 
-        Canvas(modifier = modifier.fillMaxSize()) {
+        ContinuousCanvas(modifier = modifier.fillMaxSize()) {
             val state = _state.get()
             val timeSec = (state.timeMs % 100_000L) / 1000f
 
@@ -81,7 +79,7 @@ class ChladniPatternViz @Inject constructor() : SoundVisualization {
         val primary = MaterialTheme.colorScheme.primary
         val surface = MaterialTheme.colorScheme.surface
 
-        Canvas(modifier = modifier.fillMaxSize()) {
+        ContinuousCanvas(modifier = modifier.fillMaxSize()) {
             val state = _state.get()
             val freqNorm = (state.frequency / 4000f).coerceIn(0f, 1f)
             val m = (1 + (freqNorm * 6f).toInt()).toFloat()

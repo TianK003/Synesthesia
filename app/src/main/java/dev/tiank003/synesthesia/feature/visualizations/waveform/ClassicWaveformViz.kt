@@ -1,6 +1,5 @@
 package dev.tiank003.synesthesia.feature.visualizations.waveform
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -12,7 +11,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
-import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
+import dev.tiank003.synesthesia.feature.visualizations.ContinuousCanvas
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
@@ -42,14 +41,13 @@ class ClassicWaveformViz @Inject constructor() : SoundVisualization {
 
     @Composable
     override fun Content(modifier: Modifier) {
-        LocalAudioTick.current // recompose on every audio frame via top-down Compose flow
         // Pre-allocate Path outside DrawScope — never allocate inside the draw lambda
         val path = remember { Path() }
         val color = MaterialTheme.colorScheme.primary
 
-        Canvas(modifier = modifier.fillMaxSize()) {
+        ContinuousCanvas(modifier = modifier.fillMaxSize()) {
             val pcm = _currentPcm.get()
-            if (pcm.size < 2) return@Canvas
+            if (pcm.size < 2) return@ContinuousCanvas
 
             val cx = size.width / 2f
             val cy = size.height / 2f

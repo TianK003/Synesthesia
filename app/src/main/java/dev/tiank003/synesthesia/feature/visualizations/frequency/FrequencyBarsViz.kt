@@ -1,6 +1,5 @@
 package dev.tiank003.synesthesia.feature.visualizations.frequency
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -12,7 +11,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
-import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
+import dev.tiank003.synesthesia.feature.visualizations.ContinuousCanvas
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
@@ -72,13 +71,12 @@ class FrequencyBarsViz @Inject constructor() : SoundVisualization {
 
     @Composable
     override fun Content(modifier: Modifier) {
-        LocalAudioTick.current
         val primary = MaterialTheme.colorScheme.primary
         val tertiary = MaterialTheme.colorScheme.tertiary
 
-        Canvas(modifier = modifier.fillMaxSize()) {
+        ContinuousCanvas(modifier = modifier.fillMaxSize()) {
             val bands = _bandEnergies.get()
-            if (bands.isEmpty()) return@Canvas
+            if (bands.isEmpty()) return@ContinuousCanvas
 
             // Find max for normalization
             val maxVal = bands.max().coerceAtLeast(1e-6f)

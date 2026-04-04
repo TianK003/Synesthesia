@@ -3,7 +3,6 @@ package dev.tiank003.synesthesia.feature.visualizations.frequency
 import android.graphics.Bitmap
 import android.graphics.Canvas as AndroidCanvas
 import android.graphics.Paint as AndroidPaint
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -13,7 +12,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
-import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
+import dev.tiank003.synesthesia.feature.visualizations.ContinuousCanvas
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicInteger
@@ -86,8 +85,7 @@ class SpectrogramViz @Inject constructor() : SoundVisualization {
 
     @Composable
     override fun Content(modifier: Modifier) {
-        LocalAudioTick.current
-        Canvas(modifier = modifier.fillMaxSize()) {
+        ContinuousCanvas(modifier = modifier.fillMaxSize()) {
             val col = writeCol.get()
             val w = size.width.toInt()
             val h = size.height.toInt()

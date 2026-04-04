@@ -1,7 +1,6 @@
 package dev.tiank003.synesthesia.feature.visualizations.generative
 
 import android.graphics.Paint as NativePaint
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -12,7 +11,7 @@ import androidx.compose.ui.graphics.toArgb
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FeatureExtractors
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
-import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
+import dev.tiank003.synesthesia.feature.visualizations.ContinuousCanvas
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
@@ -98,13 +97,12 @@ class ParticleFlowFieldViz @Inject constructor() : SoundVisualization {
 
     @Composable
     override fun Content(modifier: Modifier) {
-        LocalAudioTick.current
         val primary = MaterialTheme.colorScheme.primary
         // Pre-allocate native Paint once; update color when theme changes
         val nativePaint = remember { NativePaint().apply { strokeWidth = 3f } }
         nativePaint.color = primary.copy(alpha = 0.7f).toArgb()
 
-        Canvas(modifier = modifier.fillMaxSize()) {
+        ContinuousCanvas(modifier = modifier.fillMaxSize()) {
             val state = _particles.get()
             for (i in 0 until numParticles) {
                 pointCoords[i * 2]     = state.x[i] * size.width

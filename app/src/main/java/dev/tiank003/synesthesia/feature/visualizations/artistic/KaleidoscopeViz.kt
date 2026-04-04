@@ -2,7 +2,6 @@ package dev.tiank003.synesthesia.feature.visualizations.artistic
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -13,7 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import dev.tiank003.synesthesia.core.audio.AudioFrame
 import dev.tiank003.synesthesia.core.dsp.FeatureExtractors
 import dev.tiank003.synesthesia.core.dsp.FrequencyFrame
-import dev.tiank003.synesthesia.feature.visualizations.LocalAudioTick
+import dev.tiank003.synesthesia.feature.visualizations.ContinuousCanvas
 import dev.tiank003.synesthesia.feature.visualizations.SoundVisualization
 import dev.tiank003.synesthesia.feature.visualizations.VizCategory
 import java.util.concurrent.atomic.AtomicReference
@@ -41,7 +40,6 @@ class KaleidoscopeViz @Inject constructor() : SoundVisualization {
 
     @Composable
     override fun Content(modifier: Modifier) {
-        LocalAudioTick.current
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             AgslContent(modifier)
         } else {
@@ -60,7 +58,7 @@ class KaleidoscopeViz @Inject constructor() : SoundVisualization {
         }
         val shader = remember { android.graphics.RuntimeShader(shaderSrc) }
 
-        Canvas(modifier = modifier.fillMaxSize()) {
+        ContinuousCanvas(modifier = modifier.fillMaxSize()) {
             val state = _state.get()
             val t = (state.timeMs % 100_000L) / 1000f
             shader.setFloatUniform("uTime", t)
@@ -78,7 +76,7 @@ class KaleidoscopeViz @Inject constructor() : SoundVisualization {
         val primary = MaterialTheme.colorScheme.primary
         val secondary = MaterialTheme.colorScheme.secondary
 
-        Canvas(modifier = modifier.fillMaxSize()) {
+        ContinuousCanvas(modifier = modifier.fillMaxSize()) {
             val state = _state.get()
             val cx = size.width / 2f
             val cy = size.height / 2f
